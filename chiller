@@ -1,0 +1,34 @@
+#!/bin/bash
+set -e
+
+source koi
+koiname=chiller
+koidescription="Helpful Homebrew tools"
+
+function gensha {
+	__addarg "-h" "--help" "help" "optional" "" "Generate a SHA256 hash"
+	__addarg "" "file" "positionalvalue" "required" "" "The file for which to generate a hash"
+	__parseargs "$@"
+
+	if [[ ! -f "$file" ]] ; then __errortext "gensha: err: no such file $file" ; return 1 ; fi
+
+	openssl dgst -sha256 "$file"
+}
+
+function gettar {
+	__addarg "-h" "--help" "help" "optional" "" "Get a release tarball for a repository"
+	__addarg "-u" "--user" "storevalue" "optional" "wcarhart" "The repository's owner"
+	__addarg "-r" "--repo" "storevalue" "required" "" "The repository's name"
+	__addarg "-v" "--version" "storevalue" "required" "" "The release version"
+	__parseargs "$@"
+
+	wget -q "https://github.com/${user}/${repo}/archive/${version}.tar.gz"
+	if [[ ! -f "${version}.tar.gz" ]] ; then
+		__errortext "gettar: err: no such file ${version}.tar.gz"
+		return 1
+	fi
+	mv "${version}.tar.gz" "${user}_${repo}_${version}.tar.gz"
+	echo "${user}_${repo}_${version}.tar.gz"
+}
+
+__koirun "$@"
