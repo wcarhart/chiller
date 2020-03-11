@@ -17,10 +17,17 @@ function gensha {
 
 function gettar {
 	__addarg "-h" "--help" "help" "optional" "" "Get a release tarball for a repository"
-	__addarg "-u" "--user" "storevalue" "optional" "wcarhart" "The repository's owner"
-	__addarg "-r" "--repo" "storevalue" "required" "" "The repository's name"
+	__addarg "" "repo" "positionalvalue" "required" "" "The repository's name"
+	__addarg "-u" "--user" "storevalue" "optional" "`whoami`" "The repository's owner"
 	__addarg "-v" "--version" "storevalue" "required" "" "The release version"
 	__parseargs "$@"
+
+	responsecode=`curl -s -o /dev/null -I -w "%{http_code}" "https://github.com/${user}/${repo}"`
+
+	if [[ "$responsecode" != "200" ]] ; then
+		__errortext "gettar: err: could not GitHub repository ${user}/${repo}, does it exist? (HTTP ${responsecode})"
+		return 1
+	fi
 
 	wget -q "https://github.com/${user}/${repo}/archive/${version}.tar.gz"
 	if [[ ! -f "${version}.tar.gz" ]] ; then
