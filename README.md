@@ -1,5 +1,5 @@
 # chiller
-Helpful GitHub repository and Homebrew tools
+🍺 Helpful GitHub repository and Homebrew tools
 
 ### Available commands
 `chiller gensha`<br>Generate a new SHA256 hash from a tarball for a new Homebrew release.
