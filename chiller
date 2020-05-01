@@ -1,7 +1,12 @@
 #!/bin/bash
+# shellcheck disable=SC2154
+
+# shellcheck disable=SC1091
 source koi
 koiname=chiller
+# shellcheck disable=SC2034
 koidescription="Helpful Homebrew tools"
+# shellcheck disable=SC2034
 koishowhints=0
 
 function sha {
@@ -10,6 +15,7 @@ function sha {
 	__addarg "-q" "--quiet" "flag" "optional" "" "If included, only print essential information"
 	__parseargs "$@"
 
+	# shellcheck disable=SC2154
 	if [[ ! -f "$file" ]] ; then __errortext "gensha: err: no such file $file" ; return 1 ; fi
 
 	# generate hash
@@ -71,7 +77,7 @@ function pull {
 	__addarg "-q" "--quiet" "flag" "optional" "" "If included, only print essential information"
 	__parseargs "$@"
 
-	local hash text
+	local hash
 
 	# download tarball
 	(
@@ -120,6 +126,7 @@ function update {
 	fi
 
 	# verify tap is valid
+	# shellcheck disable=SC2164
 	abspath="$(cd "$path" ; pwd)"
 	if [[ ! -d "${abspath}/Formula" ]] ; then
 		__errortext "$koiname: err: '${abspath}' is not a valid Homebrew tap"
