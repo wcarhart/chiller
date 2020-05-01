@@ -1,41 +1,167 @@
 #!/bin/bash
-set -e
+# shellcheck disable=SC2154
 
+# shellcheck disable=SC1091
 source koi
 koiname=chiller
+# shellcheck disable=SC2034
 koidescription="Helpful Homebrew tools"
+# shellcheck disable=SC2034
+koishowhints=0
 
-function gensha {
+function sha {
 	__addarg "-h" "--help" "help" "optional" "" "Generate a SHA256 hash"
 	__addarg "" "file" "positionalvalue" "required" "" "The file for which to generate a hash"
+	__addarg "-q" "--quiet" "flag" "optional" "" "If included, only print essential information"
 	__parseargs "$@"
 
+	# shellcheck disable=SC2154
 	if [[ ! -f "$file" ]] ; then __errortext "gensha: err: no such file $file" ; return 1 ; fi
 
-	openssl dgst -sha256 "$file"
+	# generate hash
+	if [[ $quiet -eq 0 ]] ; then
+		echo "${file}: $(openssl dgst -sha256 "$file")"
+	else
+		openssl dgst -sha256 "$file"
+	fi
 }
 
-function gettar {
+function get {
 	__addarg "-h" "--help" "help" "optional" "" "Get a release tarball for a repository"
 	__addarg "" "repo" "positionalvalue" "required" "" "The repository's name"
-	__addarg "-u" "--user" "storevalue" "optional" "`whoami`" "The repository's owner"
+	__addarg "-u" "--user" "storevalue" "optional" "$(whoami)" "The repository's owner"
 	__addarg "-v" "--version" "storevalue" "required" "" "The release version"
+	__addarg "-q" "--quiet" "flag" "optional" "" "If included, only print essential information"
 	__parseargs "$@"
 
-	responsecode=`curl -s -o /dev/null -I -w "%{http_code}" "https://github.com/${user}/${repo}"`
+	# check for stale artifacts
+	if [[ -f "${user}_${repo}_${version}.tar.gz" ]] ; then
+		__errortext "$koiname: err: '${user}_${repo}_${version}.tar.gz' already exists"
+		return 1
+	fi
 
+	# verify repository exists
+	local responsecode
+	responsecode=$(curl -s -o /dev/null -I -w "%{http_code}" "https://github.com/${user}/${repo}")
 	if [[ "$responsecode" != "200" ]] ; then
-		__errortext "gettar: err: could not GitHub repository ${user}/${repo}, does it exist? (HTTP ${responsecode})"
+		__errortext "$koiname: err: could not find GitHub repository ${user}/${repo}, does it exist? (HTTP ${responsecode})"
 		return 1
 	fi
 
-	wget -q "https://github.com/${user}/${repo}/archive/${version}.tar.gz"
-	if [[ ! -f "${version}.tar.gz" ]] ; then
-		__errortext "gettar: err: no such file ${version}.tar.gz"
+	# pull tarball
+	if ! wget -q "https://github.com/${user}/${repo}/archive/${version}.tar.gz" ; then
+		__errortext "$koiname: err: could not get tarball for $repo $version, does that release exist?"
 		return 1
 	fi
+	if [[ ! -f "${version}.tar.gz" ]] ; then
+		__errortext "$koiname: err: no such file '${version}.tar.gz'"
+		return 1
+	fi
+
+	# rename tarball to something helpful
 	mv "${version}.tar.gz" "${user}_${repo}_${version}.tar.gz"
-	echo "${user}_${repo}_${version}.tar.gz"
+
+	if [[ $quiet -eq 0 ]] ; then
+		echo "Downloaded '${user}_${repo}_${version}.tar.gz'"
+	else
+		echo "${user}_${repo}_${version}.tar.gz"
+	fi
+}
+
+function pull {
+	__addarg "-h" "--help" "help" "optional" "" "Pull the latest release for a repository and generate a SHA256 hash"
+	__addarg "" "repo" "positionalvalue" "required" "" "The repository's name"
+	__addarg "-u" "--user" "storevalue" "optional" "$(whoami)" "The repository's owner"
+	__addarg "-v" "--version" "storevalue" "required" "" "The release version"
+	__addarg "-s" "--save" "flag" "optional" "" "If included, do not remove tarball after it is downloaded"
+	__addarg "-q" "--quiet" "flag" "optional" "" "If included, only print essential information"
+	__parseargs "$@"
+
+	local hash
+
+	# download tarball
+	(
+		__cleararglists
+		_="$(get "${repo}" --user "${user}" --version "${version}")"
+	)
+	if [[ ! -f "${user}_${repo}_${version}.tar.gz" ]] ; then
+		__errortext "$koiname: err: no such file '${user}_${repo}_${version}.tar.gz'"
+		return 1
+	fi
+
+	# generate tarball hash
+	hash="$(
+		local output
+		__cleararglists
+		output="$(sha --quiet "${user}_${repo}_${version}.tar.gz")"
+		cut -d' ' -f 2 <<< "$output"
+	)"
+
+	# remove tarball
+	if [[ $save -eq 0 ]] ; then
+		rm -f "${user}_${repo}_${version}.tar.gz"
+	fi
+
+	if [[ $quiet -eq 0 ]] ; then
+		echo "$repo $version: $hash"
+	else
+		echo "$hash"
+	fi
+}
+
+function update {
+	__addarg "-h" "--help" "help" "optional" "" "Update the formula for local tap based on a new release in GitHub"
+	__addarg "" "repo" "positionalvalue" "required" "" "The repository's name"
+	__addarg "-p" "--path" "storevalue" "required" "" "Path to local Homebrew tap" "__verifydirectory"
+	__addarg "-v" "--version" "storevalue" "required" "" "The release version"
+	__addarg "-n" "--name" "storevalue" "optional" "" "The name of the Homebrew formula to update (default: \$repo)"
+	__addarg "-u" "--user" "storevalue" "optional" "$(whoami)" "The repository's owner"
+	__addarg "-q" "--quiet" "flag" "optional" "" "If included, only print essential information"
+	__parseargs "$@"
+
+	local abspath hash replace
+
+	if [[ "$name" == "" ]] ; then
+		name="$repo"
+	fi
+
+	# verify tap is valid
+	# shellcheck disable=SC2164
+	abspath="$(cd "$path" ; pwd)"
+	if [[ ! -d "${abspath}/Formula" ]] ; then
+		__errortext "$koiname: err: '${abspath}' is not a valid Homebrew tap"
+		return 1
+	fi
+	if [[ ! -f "${abspath}/Formula/${name}.rb" ]] ; then
+		__errortext "$koiname: err: no such formula '${abspath}/Formula/${name}.rb'"
+		return 1
+	fi
+
+	# get tarball hash
+	hash="$(
+		__cleararglists
+		pull "$repo" --user "$user" --version "$version" --quiet
+	)"
+
+	# verify that formula is valid
+	if ! grep "url \"https://github.com/${user}/${repo}/archive/.*.tar.gz\"" "${abspath}/Formula/${name}.rb" > /dev/null 2>&1 ; then
+		__errortext "$koiname: err: invalid formula found in '${abspath}/Formula/${name}.rb'"
+		return 1
+	fi
+	if ! grep "sha256 \".*\"" "${abspath}/Formula/${name}.rb" > /dev/null 2>&1 ; then
+		__errortext "$koiname: err: invalid formula found in '${abspath}/Formula/${name}.rb'"
+		return 1
+	fi
+
+	# update formula
+	replace="$(sed "s;url \"https://github.com/${user}/${repo}/archive/.*.tar.gz\";url \"https://github.com/${user}/${repo}/archive/${version}.tar.gz\";g" "${abspath}/Formula/${name}.rb")"
+	echo "$replace" > "${abspath}/Formula/${name}.rb"
+	replace="$(sed "s;sha256 \".*\";sha256 \"${hash}\";g" "${abspath}/Formula/${name}.rb")"
+	echo "$replace" > "${abspath}/Formula/${name}.rb"
+
+	if [[ $quiet -eq 0 ]] ; then
+		echo "Updated formula for '${repo}'"
+	fi
 }
 
 __koirun "$@"
