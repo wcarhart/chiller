@@ -151,7 +151,7 @@ function update {
 	fi
 
 	# check for stale artifacts
-	tag="$(curl -s curl -s https://api.github.com/repos/wcarhart/konphig/releases/latest | jq -r '.tag_name')"
+	tag="$(curl -s "https://api.github.com/repos/wcarhart/${repo}/releases/latest" | jq -r '.tag_name')"
 	if [[ -f "${tag}.tar.gz" ]] ; then
 		__errortext "$koiname: err: '${tag}.tar.gz' already exists"
 		return 1
@@ -162,7 +162,7 @@ function update {
 	fi
 
 	# pull latest release tarball
-	wget -q "$(curl -s https://api.github.com/repos/wcarhart/konphig/releases/latest | jq -r '.tarball_url')"
+	wget -q "$(curl -s "https://api.github.com/repos/wcarhart/${repo}/releases/latest" | jq -r '.tarball_url')"
 	if [[ ! -f "$tag" ]] ; then
 		__errortext "$koiname: err: no such file '$tag'"
 		return 1
