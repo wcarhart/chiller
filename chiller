@@ -112,6 +112,7 @@ function pull {
 function update {
 	__addarg "-h" "--help" "help" "optional" "" "Update the formula for a local tap to the latest release on GitHub"
 	__addarg "" "repo" "positionalvalue" "required" "" "The repository's name"
+	# shellcheck disable=SC2164
 	__addarg "-p" "--path" "storevalue" "optional" "$(cd . ; pwd)" "Path to the local Homebrew tap" "__verifydirectory"
 	__addarg "-n" "--name" "storevalue" "optional" "" "The name of the Homebrew formula to update (default: \$repo)"
 	__addarg "-u" "--user" "storevalue" "optional" "$(whoami)" "The repository's owner"
@@ -214,6 +215,7 @@ function update {
 function change {
 	__addarg "-h" "--help" "help" "optional" "" "Change the formula for local tap to a specific release in GitHub"
 	__addarg "" "repo" "positionalvalue" "required" "" "The repository's name"
+	# shellcheck disable=SC2164
 	__addarg "-p" "--path" "storevalue" "optional" "$(cd . ; pwd)" "Path to local Homebrew tap" "__verifydirectory"
 	__addarg "-v" "--version" "storevalue" "required" "" "The release version"
 	__addarg "-n" "--name" "storevalue" "optional" "" "The name of the Homebrew formula to update (default: \$repo)"
