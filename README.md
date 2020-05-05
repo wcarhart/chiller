@@ -1,14 +1,23 @@
 # chiller
 🍺 Helpful GitHub repository and Homebrew tools
 
+### Documentation
+For full documentation, please visit [chiller's documentation site](https://willcarhart.dev/docs/chiller).
+
 ### Available commands
-`chiller gensha`<br>Generate a new SHA256 hash from a tarball for a new Homebrew release.
+`chiller change`<br>Change the formula for a local tap to a specific release in GitHub.
 
-`chiller gettar`<br>Get the tarball for a specific release of a GitHub repository.
+`chiller get`<br>Get a release tarball for a repository.
 
-`chiller help`<br>Show the help menu
+`chiller help`<br>Show the help menu.
 
-`chiller list`<br>List available commands
+`chiller list`<br>List all available commands.
+
+`chiller pull`<br>Pull the latest release for a repsitory and generate a SHA256 hash.
+
+`chiller sha`<br>Generate a SHA256 hash.
+
+`chiller update`<br>Update the formula for a local tap to the latest release on GitHub.
 
 ### FAQ
 _Why is it named `chiller`?_
